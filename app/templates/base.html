@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ADR-Master{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold text-gray-900">ADR-Master</h1>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Editor
+                        </a>
+                        <a href="/proposals" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Proposals
+                        </a>
+                        <a href="/integrations" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Integrations
+                        </a>
+                        <a href="/settings" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <p class="text-sm text-gray-500">ADR-Master v0.1.0 - MIT License</p>
+                <div class="flex items-center space-x-4">
+                    <div id="mcp-status" class="text-sm">
+                        <span class="inline-flex items-center">
+                            <span class="h-2 w-2 rounded-full bg-gray-400 mr-2"></span>
+                            <span class="text-gray-500">MCP: Checking...</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Check MCP status on load
+        fetch('/api/mcp/config')
+            .then(r => r.json())
+            .then(data => {
+                const status = document.getElementById('mcp-status');
+                if (data.connected) {
+                    status.innerHTML = '<span class="inline-flex items-center"><span class="h-2 w-2 rounded-full bg-green-400 mr-2"></span><span class="text-green-600">MCP: Connected</span></span>';
+                } else {
+                    status.innerHTML = '<span class="inline-flex items-center"><span class="h-2 w-2 rounded-full bg-red-400 mr-2"></span><span class="text-red-600">MCP: Disconnected</span></span>';
+                }
+            })
+            .catch(() => {
+                const status = document.getElementById('mcp-status');
+                status.innerHTML = '<span class="inline-flex items-center"><span class="h-2 w-2 rounded-full bg-red-400 mr-2"></span><span class="text-red-600">MCP: Error</span></span>';
+            });
+    </script>
+</body>
+</html>
