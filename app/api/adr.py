@@ -5,7 +5,9 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.db.database import get_db
+from app.models.base import Project, User, project_members
 from app.schemas.adr import (
     CompileRequest,
     CompileResponse,
@@ -27,11 +29,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/draft", response_model=CreateDraftResponse)
-async def create_draft(request: CreateDraftRequest, db: Session = Depends(get_db)):
-    """Create a new ADR draft."""
+async def get_project_and_verify_access(
+    project_id: int, user: User, db: Session
+) -> Project:
+    """Get project and verify user has access."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check if user is owner or member
+    is_member = (
+        db.query(project_members)
+        .filter(
+            project_members.c.project_id == project_id,
+            project_members.c.user_id == user.id,
+        )
+        .first()
+    )
+    
+    if project.owner_id != user.id and not is_member:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return project
+
+
+@router.post("/{project_id}/draft", response_model=CreateDraftResponse)
+async def create_draft(
+    project_id: int,
+    request: CreateDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new ADR draft for a project."""
     try:
-        service = ADRService(db)
+        project = await get_project_and_verify_access(project_id, current_user, db)
+        service = ADRService(db, project, current_user)
         draft_path, slug = service.create_draft(request)
         
         return CreateDraftResponse(
@@ -42,13 +74,18 @@ async def create_draft(request: CreateDraftRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/compile", response_model=CompileResponse)
+@router.post("/{project_id}/compile", response_model=CompileResponse)
 async def compile_draft(
-    request: CompileRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+    project_id: int,
+    request: CompileRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """Compile an ADR draft using LLM (async)."""
     try:
-        service = ADRService(db)
+        project = await get_project_and_verify_access(project_id, current_user, db)
+        service = ADRService(db, project, current_user)
         job_id = service.create_compilation_job(request.draft_path, request.human_notes)
         
         # Start background compilation
@@ -81,11 +118,17 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/lint", response_model=LintResult)
-async def lint_adr(request: LintRequest, db: Session = Depends(get_db)):
+@router.post("/{project_id}/lint", response_model=LintResult)
+async def lint_adr(
+    project_id: int,
+    request: LintRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Lint an ADR file."""
     try:
-        service = ADRService(db)
+        project = await get_project_and_verify_access(project_id, current_user, db)
+        service = ADRService(db, project, current_user)
         result = service.lint_adr(request.file_path)
         return result
     except Exception as e:
@@ -93,11 +136,17 @@ async def lint_adr(request: LintRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/promote", response_model=PromoteResponse)
-async def promote_adr(request: PromoteRequest, db: Session = Depends(get_db)):
+@router.post("/{project_id}/promote", response_model=PromoteResponse)
+async def promote_adr(
+    project_id: int,
+    request: PromoteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Promote an ADR from draft to final."""
     try:
-        service = ADRService(db)
+        project = await get_project_and_verify_access(project_id, current_user, db)
+        service = ADRService(db, project, current_user)
         final_path = service.promote_adr(request.draft_path)
         
         branch = None
@@ -133,10 +182,16 @@ async def promote_adr(request: PromoteRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/sync", response_model=SyncResponse)
-async def sync_adrs(request: SyncRequest):
+@router.post("/{project_id}/sync", response_model=SyncResponse)
+async def sync_adrs(
+    project_id: int,
+    request: SyncRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Sync ADR directories with remote."""
     try:
+        project = await get_project_and_verify_access(project_id, current_user, db)
         github_service = GitHubService()
         synced_files, conflicts = github_service.sync_adr_directories(request.direction)
         

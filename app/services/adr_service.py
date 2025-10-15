@@ -9,28 +9,30 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.base import ADRMetadata, ActionLog, CompilationJob
+from app.models.base import ADRMetadata, ActionLog, CompilationJob, Project, User
 from app.schemas.adr import CreateDraftRequest, LintResult
 
 
 class ADRService:
     """Service for ADR operations."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, project: Project, user: User):
         self.db = db
         self.settings = get_settings()
+        self.project = project
+        self.user = user
 
     def create_draft(self, request: CreateDraftRequest) -> tuple[str, str]:
         """Create a new ADR draft."""
         # Generate slug from title
         slug = self._generate_slug(request.title)
         
-        # Get next ADR number
+        # Get next ADR number for this project
         number = self._get_next_adr_number()
         filename = f"{number:03d}-{slug}.md"
         
-        # Create draft file path
-        draft_path = self.settings.adr_draft_dir / filename
+        # Create draft file path (project-specific)
+        draft_path = Path(self.project.draft_path) / filename
         
         # Generate MADR content
         content = self._generate_madr_content(
@@ -51,16 +53,20 @@ class ADRService:
         
         # Save metadata
         metadata = ADRMetadata(
+            project_id=self.project.id,
             file_path=str(draft_path),
             title=request.title,
             slug=filename,
             status="Draft",
+            author_id=self.user.id,
             sha256=sha256,
         )
         self.db.add(metadata)
         
         # Log action
         log = ActionLog(
+            project_id=self.project.id,
+            user_id=self.user.id,
             job_id=str(uuid.uuid4()),
             action="create_draft",
             details={"title": request.title, "path": str(draft_path)},
@@ -123,8 +129,8 @@ class ADRService:
         if not lint_result.valid:
             raise ValueError(f"ADR failed linting: {lint_result.errors}")
         
-        # Move to final directory
-        target = self.settings.adr_dir / source.name
+        # Move to final directory (project-specific)
+        target = Path(self.project.adr_path) / source.name
         
         # Read content and update status
         content = source.read_text()
@@ -142,6 +148,8 @@ class ADRService:
         
         # Log action
         log = ActionLog(
+            project_id=self.project.id,
+            user_id=self.user.id,
             action="promote_adr",
             details={"source": str(source), "target": str(target)},
             sha256=self._calculate_sha256(target),
@@ -160,6 +168,8 @@ class ADRService:
         
         job = CompilationJob(
             job_id=job_id,
+            project_id=self.project.id,
+            user_id=self.user.id,
             draft_path=draft_path,
             status="queued",
             logs=[f"Job created at {datetime.utcnow().isoformat()}"],
@@ -181,13 +191,16 @@ class ADRService:
         return slug.strip("-")
 
     def _get_next_adr_number(self) -> int:
-        """Get next ADR number."""
-        # Check both draft and final directories
+        """Get next ADR number for this project."""
+        # Check both draft and final directories for this project
         all_files = []
-        if self.settings.adr_dir.exists():
-            all_files.extend(self.settings.adr_dir.glob("*.md"))
-        if self.settings.adr_draft_dir.exists():
-            all_files.extend(self.settings.adr_draft_dir.glob("*.md"))
+        adr_dir = Path(self.project.adr_path)
+        draft_dir = Path(self.project.draft_path)
+        
+        if adr_dir.exists():
+            all_files.extend(adr_dir.glob("*.md"))
+        if draft_dir.exists():
+            all_files.extend(draft_dir.glob("*.md"))
         
         numbers = []
         for file in all_files:
