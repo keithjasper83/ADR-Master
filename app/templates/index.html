@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Home - ADR-Workbench{% endblock %}
+
+{% block content %}
+<div class="text-center py-12">
+    <h1 class="text-5xl font-bold text-gray-800 mb-4">Welcome to ADR-Workbench</h1>
+    <p class="text-xl text-gray-600 mb-8">Offline-capable web app for authoring and managing MADR-style ADRs</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+        <div class="card">
+            <div class="text-4xl mb-4">📝</div>
+            <h3 class="text-xl font-bold mb-2">Author ADRs</h3>
+            <p class="text-gray-600 mb-4">Create and edit Architecture Decision Records with MADR format support</p>
+            <a href="/adrs/new" class="btn-primary">Create ADR</a>
+        </div>
+        
+        <div class="card">
+            <div class="text-4xl mb-4">🤖</div>
+            <h3 class="text-xl font-bold mb-2">LLM Compilation</h3>
+            <p class="text-gray-600 mb-4">Generate ADRs using AI assistance with OpenAI or Anthropic</p>
+            <a href="/adrs/new?mode=llm" class="btn-primary">Use LLM</a>
+        </div>
+        
+        <div class="card">
+            <div class="text-4xl mb-4">✅</div>
+            <h3 class="text-xl font-bold mb-2">Lint & Validate</h3>
+            <p class="text-gray-600 mb-4">Check ADRs for quality, consistency, and best practices</p>
+            <a href="/adrs" class="btn-primary">View ADRs</a>
+        </div>
+    </div>
+    
+    <div class="mt-12 p-6 bg-blue-50 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4">Features</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <div>
+                <h4 class="font-bold text-lg mb-2">🚀 Core Features</h4>
+                <ul class="list-disc list-inside space-y-1 text-gray-700">
+                    <li>FastAPI + HTMX + Tailwind stack</li>
+                    <li>Offline-capable with local SQLite</li>
+                    <li>MADR format support</li>
+                    <li>Real-time linting and validation</li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg mb-2">🔧 Advanced Features</h4>
+                <ul class="list-disc list-inside space-y-1 text-gray-700">
+                    <li>MCP client integration</li>
+                    <li>GitHub PR promotion</li>
+                    <li>Async job tracking</li>
+                    <li>Plugin system</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

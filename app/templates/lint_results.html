@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Lint Results - ADR-{{ '%04d' % adr.number }} - ADR-Workbench{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="/adrs/{{ adr.id }}" class="text-primary hover:underline mb-2 inline-block">← Back to ADR</a>
+    <h1 class="text-3xl font-bold">Lint Results: ADR-{{ '%04d' % adr.number }}</h1>
+    <p class="text-gray-600">{{ adr.title }}</p>
+</div>
+
+<div class="card mb-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h2 class="text-2xl font-bold mb-2">Summary</h2>
+        </div>
+        <div class="flex gap-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-red-600">{{ summary.errors }}</div>
+                <div class="text-sm text-gray-600">Errors</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-yellow-600">{{ summary.warnings }}</div>
+                <div class="text-sm text-gray-600">Warnings</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-blue-600">{{ summary.info }}</div>
+                <div class="text-sm text-gray-600">Info</div>
+            </div>
+        </div>
+    </div>
+    
+    {% if summary.total == 0 %}
+    <div class="mt-4 p-4 bg-green-50 rounded-lg text-green-800">
+        <p class="font-bold">✓ No issues found! This ADR looks great.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if summary.total > 0 %}
+<div class="space-y-4">
+    {% for issue in summary.issues %}
+    <div class="card border-l-4 
+        {% if issue.severity == 'error' %}border-red-500{% endif %}
+        {% if issue.severity == 'warning' %}border-yellow-500{% endif %}
+        {% if issue.severity == 'info' %}border-blue-500{% endif %}
+    ">
+        <div class="flex items-start">
+            <div class="flex-shrink-0 mr-3">
+                {% if issue.severity == 'error' %}
+                <span class="text-2xl">❌</span>
+                {% elif issue.severity == 'warning' %}
+                <span class="text-2xl">⚠️</span>
+                {% else %}
+                <span class="text-2xl">ℹ️</span>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="badge 
+                        {% if issue.severity == 'error' %}bg-red-200 text-red-800{% endif %}
+                        {% if issue.severity == 'warning' %}bg-yellow-200 text-yellow-800{% endif %}
+                        {% if issue.severity == 'info' %}bg-blue-200 text-blue-800{% endif %}
+                    ">{{ issue.severity.upper() }}</span>
+                    {% if issue.field %}
+                    <span class="text-sm text-gray-500">Field: <code class="bg-gray-100 px-2 py-1 rounded">{{ issue.field }}</code></span>
+                    {% endif %}
+                </div>
+                <p class="text-gray-800">{{ issue.message }}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="mt-6 flex gap-4">
+    <a href="/adrs/{{ adr.id }}/edit" class="btn-primary">Fix Issues</a>
+    <a href="/adrs/{{ adr.id }}" class="btn-outline">Back to ADR</a>
+</div>
+{% endblock %}

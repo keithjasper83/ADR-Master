@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}ADR-{{ '%04d' % adr.number }}: {{ adr.title }} - ADR-Workbench{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <div class="text-gray-500 font-mono mb-2">ADR-{{ '%04d' % adr.number }}</div>
+            <h1 class="text-3xl font-bold mb-2">{{ adr.title }}</h1>
+            <span class="badge badge-{{ adr.status }}">{{ adr.status.upper() }}</span>
+        </div>
+        <div class="flex gap-2">
+            <a href="/adrs/{{ adr.id }}/edit" class="btn-outline">Edit</a>
+            <a href="/adrs/{{ adr.id }}/lint" class="btn-secondary">Lint</a>
+        </div>
+    </div>
+    
+    <div class="text-sm text-gray-500 mb-4">
+        Created: {{ adr.created_at.strftime('%Y-%m-%d %H:%M') }} | 
+        Updated: {{ adr.updated_at.strftime('%Y-%m-%d %H:%M') }}
+    </div>
+</div>
+
+<div class="space-y-6">
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Context</h2>
+        <div class="prose max-w-none">{{ adr.context or 'Not provided' }}</div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Decision</h2>
+        <div class="prose max-w-none">{{ adr.decision or 'Not provided' }}</div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Consequences</h2>
+        <div class="prose max-w-none">{{ adr.consequences or 'Not provided' }}</div>
+    </div>
+    
+    {% if adr.options_considered %}
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Options Considered</h2>
+        <div class="prose max-w-none">{{ adr.options_considered }}</div>
+    </div>
+    {% endif %}
+    
+    {% if adr.pros_cons %}
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Pros and Cons</h2>
+        <div class="prose max-w-none">{{ adr.pros_cons }}</div>
+    </div>
+    {% endif %}
+    
+    {% if adr.links %}
+    <div class="card">
+        <h2 class="text-xl font-bold mb-3">Links</h2>
+        <div class="prose max-w-none">{{ adr.links }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="mt-6 flex gap-4">
+    <button 
+        hx-get="/api/adrs/{{ adr.id }}/markdown"
+        hx-target="#markdown-modal"
+        class="btn-outline"
+    >
+        View Markdown
+    </button>
+    
+    <button 
+        onclick="if(confirm('Create GitHub PR for this ADR?')) { /* Add PR logic */ }"
+        class="btn-secondary"
+    >
+        Create GitHub PR
+    </button>
+    
+    <button 
+        hx-delete="/api/adrs/{{ adr.id }}"
+        hx-confirm="Are you sure you want to delete this ADR?"
+        hx-redirect="/adrs"
+        class="btn-danger"
+    >
+        Delete
+    </button>
+</div>
+
+<div id="markdown-modal" class="hidden"></div>
+{% endblock %}
