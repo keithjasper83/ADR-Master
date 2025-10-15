@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Plugins - ADR-Workbench{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-6">Plugins</h1>
+
+<div class="card mb-6">
+    <p class="mb-4">Extend ADR-Workbench functionality with plugins. Place Python files in the <code class="bg-gray-100 px-2 py-1 rounded">plugins/</code> directory.</p>
+    <button 
+        hx-post="/api/plugins/load"
+        hx-target="#plugins-list"
+        class="btn-primary"
+    >
+        Reload Plugins
+    </button>
+</div>
+
+<div 
+    hx-get="/api/plugins"
+    hx-trigger="load"
+    hx-target="#plugins-list"
+>
+    <div id="plugins-list">
+        <p class="text-gray-500">Loading plugins...</p>
+    </div>
+</div>
+
+<script>
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'plugins-list') {
+            const response = JSON.parse(event.detail.xhr.response);
+            const plugins = Array.isArray(response) ? response : response.plugins || [];
+            
+            let html = '<div class="space-y-4">';
+            
+            if (plugins.length === 0) {
+                html += '<div class="card text-center text-gray-500"><p>No plugins loaded. Add plugins to the plugins/ directory.</p></div>';
+            } else {
+                plugins.forEach(plugin => {
+                    html += `
+                        <div class="card">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-xl font-bold">${plugin.name}</h3>
+                                    <p class="text-gray-600 mb-2">${plugin.description}</p>
+                                    <div class="text-sm text-gray-500">
+                                        Version: ${plugin.version}
+                                        ${plugin.author ? ` | Author: ${plugin.author}` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${plugin.enabled ? 
+                                        `<button 
+                                            hx-post="/api/plugins/${plugin.name}/disable"
+                                            hx-target="#plugins-list"
+                                            class="btn-outline"
+                                        >Disable</button>` :
+                                        `<button 
+                                            hx-post="/api/plugins/${plugin.name}/enable"
+                                            hx-target="#plugins-list"
+                                            class="btn-primary"
+                                        >Enable</button>`
+                                    }
+                                    <button 
+                                        hx-post="/api/plugins/${plugin.name}/reload"
+                                        hx-target="#plugins-list"
+                                        class="btn-secondary"
+                                    >Reload</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+            event.detail.target.innerHTML = html;
+        }
+    });
+</script>
+{% endblock %}

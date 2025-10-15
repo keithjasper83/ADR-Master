@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ADR-Workbench{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-6">Settings</h1>
+
+<div class="space-y-6">
+    <div class="card">
+        <h2 class="text-xl font-bold mb-4">MCP Configuration</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block mb-2 font-bold">MCP Endpoint URL</label>
+                <input type="url" class="input-field" placeholder="http://localhost:8080/mcp">
+                <p class="text-sm text-gray-500 mt-1">URL of the MCP server to connect to</p>
+            </div>
+            <button class="btn-primary">Test Connection</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-4">LLM Configuration</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block mb-2 font-bold">Provider</label>
+                <select class="input-field">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                </select>
+            </div>
+            <div>
+                <label class="block mb-2 font-bold">Model</label>
+                <input type="text" class="input-field" placeholder="gpt-4">
+            </div>
+            <div>
+                <label class="block mb-2 font-bold">API Key</label>
+                <input type="password" class="input-field" placeholder="sk-...">
+                <p class="text-sm text-gray-500 mt-1">Your API key is stored locally and never sent to our servers</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-4">GitHub Configuration</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block mb-2 font-bold">GitHub Token</label>
+                <input type="password" class="input-field" placeholder="ghp_...">
+                <p class="text-sm text-gray-500 mt-1">Personal access token for creating PRs</p>
+            </div>
+            <div>
+                <label class="block mb-2 font-bold">Default Branch</label>
+                <input type="text" class="input-field" value="main">
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-4">ADR Settings</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block mb-2 font-bold">ADR Directory</label>
+                <input type="text" class="input-field" value="./docs/adr">
+                <p class="text-sm text-gray-500 mt-1">Directory where ADR files are stored</p>
+            </div>
+            <div>
+                <label class="block mb-2 font-bold">Template</label>
+                <select class="input-field">
+                    <option value="madr" selected>MADR (Markdown Any Decision Records)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="text-xl font-bold mb-4">Database</h2>
+        <div class="space-y-4">
+            <p class="text-gray-600">Local SQLite database: <code class="bg-gray-100 px-2 py-1 rounded">adr_workbench.db</code></p>
+            <div class="flex gap-2">
+                <button class="btn-outline">Export Database</button>
+                <button class="btn-outline">Import Database</button>
+                <button class="btn-danger">Clear All Data</button>
+            </div>
+        </div>
+    </div>
+    
+    <button class="btn-primary">Save Settings</button>
+</div>
+{% endblock %}

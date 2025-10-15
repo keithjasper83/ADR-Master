@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ADR-Workbench{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/output.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-2xl font-bold text-primary">ADR-Workbench</a>
+                    <div class="hidden md:flex space-x-4">
+                        <a href="/adrs" class="text-gray-700 hover:text-primary">ADRs</a>
+                        <a href="/jobs" class="text-gray-700 hover:text-primary">Jobs</a>
+                        <a href="/plugins" class="text-gray-700 hover:text-primary">Plugins</a>
+                        <a href="/settings" class="text-gray-700 hover:text-primary">Settings</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="/adrs/new" class="btn-primary">New ADR</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
+            <p>ADR-Workbench v1.0.0 - Offline-capable Architecture Decision Record Management</p>
+        </div>
+    </footer>
+</body>
+</html>
