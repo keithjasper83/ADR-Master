@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.api import adr, healthz, integrations, mcp, projects
+from app.api import adr, auth, healthz, integrations, mcp, projects
 from app.config import get_settings
 from app.db.database import engine, init_db
 from app.models import base  # noqa: F401 - needed for model registration
@@ -34,9 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
     
     # Ensure required directories exist
-    settings.adr_dir.mkdir(parents=True, exist_ok=True)
-    settings.adr_draft_dir.mkdir(parents=True, exist_ok=True)
     settings.log_dir.mkdir(parents=True, exist_ok=True)
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
     
     logger.info("Application startup complete")
     
@@ -76,9 +75,10 @@ templates = Jinja2Templates(directory=str(templates_path))
 
 # Include routers
 app.include_router(healthz.router, tags=["Health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(adr.router, prefix="/api/adr", tags=["ADR"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["MCP"])
-app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])
 
 

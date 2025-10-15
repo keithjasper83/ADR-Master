@@ -9,6 +9,9 @@ ADR-Master is a powerful, offline-capable Architecture Decision Records (ADR) ed
 
 ## Features
 
+- 👥 **Multi-user, multi-project** support with access control
+- 🔐 **Authentication** with JWT tokens and API keys
+- 🎫 **Project invitations** via secure project secrets
 - 📝 **MADR-based ADR Editor** with live preview and syntax hints
 - 🤖 **LLM-powered compilation** for ADR improvement and refinement
 - 🔍 **Smart linting** with MADR structure validation
@@ -16,7 +19,6 @@ ADR-Master is a powerful, offline-capable Architecture Decision Records (ADR) ed
 - 🔌 **MCP integration** (client) for project and feature awareness
 - 🚀 **GitHub sync** with PR creation support
 - 🧩 **Plugin system** for extensibility
-- 💾 **Offline-first** design - works without internet
 - 🐳 **Docker & Devcontainer** ready
 
 ## Quick Start
@@ -56,21 +58,22 @@ make run
 Create a `.env` file (see `.env.example`):
 
 ```env
-# Working directory
-WORKDIR=/app
+# Server
+BASE_URL=https://adr.example.com
 
-# MCP Integration (optional)
-MCP_BASE_URL=http://localhost:3000/api
-MCP_TOKEN=your-token
-
-# LLM Endpoint (local/offline)
-LLM_ENDPOINT=http://localhost:11434/api/generate
-
-# GitHub Integration (optional)
-GITHUB_TOKEN=your-github-token
+# Authentication
+SECRET_KEY=your-secret-key-here
+JWT_EXPIRATION_HOURS=24
 
 # Database
 DATABASE_URL=sqlite:///./adr_master.db
+
+# MCP Integration (optional)
+MCP_BASE_URL=https://mcp-server.example.com/api
+MCP_TOKEN=your-token
+
+# LLM Endpoint (optional)
+LLM_ENDPOINT=https://llm-api.example.com/generate
 ```
 
 ## Architecture
