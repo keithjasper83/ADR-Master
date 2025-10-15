@@ -46,6 +46,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(hours=settings.jwt_expiration_hours)
     
     to_encode.update({"exp": expire})
+    # Convert user_id to string for JWT "sub" claim
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
 
@@ -53,9 +56,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def decode_access_token(token: str) -> Optional[dict]:
     """Decode and verify a JWT access token."""
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm], options={"verify_sub": False})
         return payload
     except jwt.ExpiredSignatureError:
         return None
-    except jwt.JWTError:
+    except Exception:
         return None
