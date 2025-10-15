@@ -5,6 +5,116 @@ All notable changes to ADR-Master will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2024-10-15
+
+### ⚠️ BREAKING CHANGES
+
+Complete architectural redesign from offline-first single-user to online multi-user system.
+
+**Migration required** - see `UPGRADE_v0.2.md` for detailed instructions.
+
+### Added
+
+#### Multi-User & Authentication
+- **User Management**: Email/password registration and login
+- **JWT Authentication**: Secure token-based authentication
+- **API Keys**: Generate API keys for programmatic access
+- **Session Cookies**: Web-based authentication support
+- **Password Hashing**: Secure password storage with bcrypt
+
+#### Multi-Project Architecture
+- **Project Management**: Create and manage multiple projects
+- **Project Ownership**: Each project has an owner and members
+- **Project Secrets**: Auto-generated secure secrets for joining projects
+- **Project Invitations**: Invite users via email with expiring tokens
+- **Project Access Control**: Owner/member roles with access verification
+
+#### Updated API Endpoints
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/api-key/generate` - Generate API key
+- `DELETE /api/auth/api-key/revoke` - Revoke API key
+- `GET /api/projects` - List user's projects
+- `POST /api/projects` - Create new project
+- `GET /api/projects/{id}` - Get project details
+- `POST /api/projects/{id}/invite` - Invite user to project
+- `POST /api/projects/{id}/join` - Join project with secret
+- `DELETE /api/projects/{id}` - Delete project
+
+#### Database Schema
+- `users` table for user accounts
+- `projects` table for project metadata
+- `project_members` association table for memberships
+- `project_invitations` table for pending invitations
+- Updated all existing tables with project/user references
+
+### Changed
+
+#### API Endpoints (Breaking)
+- All ADR endpoints now require authentication
+- All ADR endpoints scoped to `/{project_id}/`
+  - `POST /api/adr/{project_id}/draft` (was `/api/adr/draft`)
+  - `POST /api/adr/{project_id}/compile` (was `/api/adr/compile`)
+  - `POST /api/adr/{project_id}/lint` (was `/api/adr/lint`)
+  - `POST /api/adr/{project_id}/promote` (was `/api/adr/promote`)
+  - `POST /api/adr/{project_id}/sync` (was `/api/adr/sync`)
+
+#### Storage Model
+- Changed from global ADR directories to per-project directories
+- Each project specifies its own `root_path`, `adr_path`, `draft_path`
+- ADR numbering now project-scoped (each project starts at 001)
+
+#### Configuration
+- Added `SECRET_KEY` for JWT signing (required)
+- Added `BASE_URL` for invitation links (required)
+- Added `JWT_EXPIRATION_HOURS` setting
+- Added `INVITATION_EXPIRATION_DAYS` setting
+- Added session cookie configuration
+- Removed single global ADR directory paths
+- Updated version to 0.2.0
+
+### Removed
+
+#### Offline-First Features
+- Removed assumption of offline operation
+- Removed air-gap deployment focus
+- Updated to assume online connectivity
+- External services (MCP, LLM) now expected to be available online
+
+#### Documentation
+- Removed offline-specific deployment guides (will be updated)
+- Removed air-gap operation instructions (will be updated)
+
+### Dependencies
+
+#### Added
+- `pyjwt>=2.8.0` - JWT token generation/verification
+- `passlib[bcrypt]>=1.7.4` - Password hashing
+- `python-jose[cryptography]>=3.3.0` - Cryptographic operations
+
+### Migration
+
+See `UPGRADE_v0.2.md` for complete migration guide from v0.1.0.
+
+**Summary:**
+1. Backup existing data
+2. Register first user
+3. Create project
+4. Copy ADR files to new project directory
+5. Update client applications with authentication
+
+### Technical Details
+
+- New `app/auth/` module for authentication logic
+- Updated `app/services/adr_service.py` for project context
+- Updated `app/api/adr.py` with project scoping
+- New `app/api/auth.py` for authentication endpoints
+- Enhanced `app/api/projects.py` with full project management
+
+---
+
 ## [0.1.0] - 2024-01-15
 
 ### Added
