@@ -92,7 +92,7 @@ Improved ADR:"""
                     response = await client.post(
                         self.settings.llm_endpoint,
                         json={
-                            "model": "llama2",
+                            "model": self.settings.llm_model,
                             "prompt": prompt,
                             "stream": False,
                         },
@@ -110,7 +110,7 @@ Improved ADR:"""
                     response = await client.post(
                         openai_endpoint,
                         json={
-                            "model": "gpt-3.5-turbo",
+                            "model": self.settings.llm_model,
                             "messages": [{"role": "user", "content": prompt}],
                         },
                     )

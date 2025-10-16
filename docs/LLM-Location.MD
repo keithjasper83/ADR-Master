@@ -1,6 +1,7 @@
 ### LM Studio (Qwen3-4B-2507)
+
 - **Base URL (Tailscale):** `http://desktop.taile9300d.ts.net:1234/v1`
--  model `"qwen/qwen3-4b-2507"`.
+- **Model:** `"qwen/qwen3-4b-2507"`
 - MCP Server running with the following tools
 
 
