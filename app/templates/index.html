@@ -1,57 +1,283 @@
 {% extends "base.html" %}
 
-{% block title %}Home - ADR-Workbench{% endblock %}
+{% block title %}ADR Editor - ADR-Master{% endblock %}
 
 {% block content %}
-<div class="text-center py-12">
-    <h1 class="text-5xl font-bold text-gray-800 mb-4">Welcome to ADR-Workbench</h1>
-    <p class="text-xl text-gray-600 mb-8">Offline-capable web app for authoring and managing MADR-style ADRs</p>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-        <div class="card">
-            <div class="text-4xl mb-4">📝</div>
-            <h3 class="text-xl font-bold mb-2">Author ADRs</h3>
-            <p class="text-gray-600 mb-4">Create and edit Architecture Decision Records with MADR format support</p>
-            <a href="/adrs/new" class="btn-primary">Create ADR</a>
+<div x-data="adrEditor()" x-cloak class="h-screen flex flex-col">
+    <!-- Main Container -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Left Sidebar: Project Explorer -->
+        <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-4">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">ADR Explorer</h2>
+                
+                <!-- Search -->
+                <input type="text" x-model="searchQuery" placeholder="Search ADRs..." 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-4">
+                
+                <!-- New Draft Button -->
+                <button @click="showNewDraftModal = true" 
+                        class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 mb-4">
+                    + New Draft
+                </button>
+                
+                <!-- Draft ADRs -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Drafts</h3>
+                    <div class="space-y-1">
+                        <template x-for="adr in filteredDrafts" :key="adr.path">
+                            <div @click="loadADR(adr)" 
+                                 :class="{'bg-indigo-50': selectedADR?.path === adr.path}"
+                                 class="px-3 py-2 text-sm rounded cursor-pointer hover:bg-gray-50">
+                                <span x-text="adr.title"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                
+                <!-- Final ADRs -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Final</h3>
+                    <div class="space-y-1">
+                        <template x-for="adr in filteredFinal" :key="adr.path">
+                            <div @click="loadADR(adr)" 
+                                 :class="{'bg-indigo-50': selectedADR?.path === adr.path}"
+                                 class="px-3 py-2 text-sm rounded cursor-pointer hover:bg-gray-50">
+                                <span x-text="adr.title"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div class="card">
-            <div class="text-4xl mb-4">🤖</div>
-            <h3 class="text-xl font-bold mb-2">LLM Compilation</h3>
-            <p class="text-gray-600 mb-4">Generate ADRs using AI assistance with OpenAI or Anthropic</p>
-            <a href="/adrs/new?mode=llm" class="btn-primary">Use LLM</a>
+
+        <!-- Center: Editor/Diff Tabs -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Tabs -->
+            <div class="bg-white border-b border-gray-200">
+                <div class="flex space-x-8 px-6">
+                    <button @click="activeTab = 'editor'" 
+                            :class="{'border-indigo-500 text-indigo-600': activeTab === 'editor', 'border-transparent text-gray-500': activeTab !== 'editor'}"
+                            class="py-4 px-1 border-b-2 font-medium text-sm">
+                        Editor
+                    </button>
+                    <button @click="activeTab = 'diff'" 
+                            :class="{'border-indigo-500 text-indigo-600': activeTab === 'diff', 'border-transparent text-gray-500': activeTab !== 'diff'}"
+                            class="py-4 px-1 border-b-2 font-medium text-sm">
+                        Diff/Promote
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Tab -->
+            <div x-show="activeTab === 'editor'" class="flex-1 flex overflow-hidden">
+                <div class="flex-1 p-6 overflow-auto">
+                    <textarea x-model="editorContent" 
+                              class="w-full h-full font-mono text-sm border border-gray-300 rounded p-4"
+                              placeholder="Select or create an ADR..."></textarea>
+                </div>
+                <div class="flex-1 p-6 overflow-auto bg-gray-50">
+                    <div class="prose max-w-none" x-html="renderedPreview"></div>
+                </div>
+            </div>
+
+            <!-- Diff Tab -->
+            <div x-show="activeTab === 'diff'" class="flex-1 p-6 overflow-auto">
+                <div class="mb-4">
+                    <button @click="promoteADR()" 
+                            :disabled="!selectedADR || selectedADR.status !== 'Draft'"
+                            class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                        Promote to Final
+                    </button>
+                </div>
+                <div class="bg-white border border-gray-300 rounded p-4">
+                    <p class="text-gray-500">Diff view will show changes before promotion</p>
+                </div>
+            </div>
         </div>
-        
-        <div class="card">
-            <div class="text-4xl mb-4">✅</div>
-            <h3 class="text-xl font-bold mb-2">Lint & Validate</h3>
-            <p class="text-gray-600 mb-4">Check ADRs for quality, consistency, and best practices</p>
-            <a href="/adrs" class="btn-primary">View ADRs</a>
+
+        <!-- Right Sidebar: MCP Panel -->
+        <div class="w-80 bg-white border-l border-gray-200 overflow-y-auto">
+            <div class="p-4">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">MCP Features</h2>
+                
+                <!-- Projects -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Project</label>
+                    <select x-model="selectedProject" @change="loadFeatures()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <option value="">Select project...</option>
+                        <template x-for="project in projects" :key="project.id">
+                            <option :value="project.id" x-text="project.name"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <!-- Features -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Features</h3>
+                    <div class="space-y-2">
+                        <template x-for="feature in features" :key="feature.id">
+                            <div class="border border-gray-200 rounded p-3">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900" x-text="feature.name"></p>
+                                        <p class="text-xs text-gray-500 mt-1" x-text="feature.description"></p>
+                                    </div>
+                                    <button @click="linkFeature(feature)" 
+                                            class="ml-2 text-indigo-600 hover:text-indigo-700 text-xs">
+                                        Link
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <div class="mt-12 p-6 bg-blue-50 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4">Features</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-            <div>
-                <h4 class="font-bold text-lg mb-2">🚀 Core Features</h4>
-                <ul class="list-disc list-inside space-y-1 text-gray-700">
-                    <li>FastAPI + HTMX + Tailwind stack</li>
-                    <li>Offline-capable with local SQLite</li>
-                    <li>MADR format support</li>
-                    <li>Real-time linting and validation</li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="font-bold text-lg mb-2">🔧 Advanced Features</h4>
-                <ul class="list-disc list-inside space-y-1 text-gray-700">
-                    <li>MCP client integration</li>
-                    <li>GitHub PR promotion</li>
-                    <li>Async job tracking</li>
-                    <li>Plugin system</li>
-                </ul>
-            </div>
+
+    <!-- New Draft Modal -->
+    <div x-show="showNewDraftModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Create New ADR Draft</h3>
+            <form @submit.prevent="createDraft()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text" x-model="newDraft.title" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Problem Statement</label>
+                        <textarea x-model="newDraft.problem" required rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Context</label>
+                        <textarea x-model="newDraft.context" required rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" @click="showNewDraftModal = false" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                        Create Draft
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+function adrEditor() {
+    return {
+        activeTab: 'editor',
+        searchQuery: '',
+        drafts: [],
+        finals: [],
+        selectedADR: null,
+        editorContent: '',
+        projects: [],
+        features: [],
+        selectedProject: '',
+        showNewDraftModal: false,
+        newDraft: {
+            title: '',
+            problem: '',
+            context: ''
+        },
+        
+        init() {
+            this.loadProjects();
+        },
+        
+        get filteredDrafts() {
+            return this.drafts.filter(adr => 
+                adr.title.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+        },
+        
+        get filteredFinal() {
+            return this.finals.filter(adr => 
+                adr.title.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+        },
+        
+        get renderedPreview() {
+            // Simple markdown rendering (would use marked.js in production)
+            return this.editorContent.replace(/\n/g, '<br>');
+        },
+        
+        async loadProjects() {
+            try {
+                const response = await fetch('/api/mcp/projects');
+                this.projects = await response.json();
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+            }
+        },
+        
+        async loadFeatures() {
+            if (!this.selectedProject) return;
+            try {
+                const response = await fetch(`/api/mcp/features?project=${this.selectedProject}`);
+                this.features = await response.json();
+            } catch (error) {
+                console.error('Failed to load features:', error);
+            }
+        },
+        
+        async createDraft() {
+            try {
+                const response = await fetch('/api/adr/draft', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(this.newDraft)
+                });
+                const data = await response.json();
+                alert('Draft created: ' + data.slug);
+                this.showNewDraftModal = false;
+                this.newDraft = {title: '', problem: '', context: ''};
+                // Reload drafts
+                location.reload();
+            } catch (error) {
+                alert('Failed to create draft: ' + error.message);
+            }
+        },
+        
+        loadADR(adr) {
+            this.selectedADR = adr;
+            this.editorContent = adr.content || 'Loading...';
+        },
+        
+        async promoteADR() {
+            if (!this.selectedADR) return;
+            if (!confirm('Promote this ADR to final?')) return;
+            
+            try {
+                const response = await fetch('/api/adr/promote', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({draft_path: this.selectedADR.path, create_pr: false})
+                });
+                const data = await response.json();
+                alert('ADR promoted: ' + data.final_path);
+                location.reload();
+            } catch (error) {
+                alert('Failed to promote: ' + error.message);
+            }
+        },
+        
+        linkFeature(feature) {
+            alert('Link feature ' + feature.name + ' to ADR (not implemented in UI yet)');
+        }
+    };
+}
+</script>
 {% endblock %}

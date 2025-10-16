@@ -1,3 +1,2 @@
-"""ADR-Workbench: FastAPI application for authoring and managing ADRs."""
-
-__version__ = "1.0.0"
+"""ADR-Master application package."""
+__version__ = "0.1.0"

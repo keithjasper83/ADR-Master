@@ -1,167 +1,114 @@
-"""Service for GitHub integration."""
+"""GitHub integration service."""
+import logging
+from pathlib import Path
+from typing import Optional
 
-from typing import Optional, Dict, Any
-from github import Github, GithubException
-from app.config import settings
-from app.models.adr import ADR
-from app.services.adr_service import ADRService
-import base64
+import git
+
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubService:
     """Service for GitHub operations."""
-    
-    def __init__(self, token: Optional[str] = None):
-        """Initialize GitHub service."""
-        self.token = token or settings.github_token
-        self.client = Github(self.token) if self.token else None
-    
-    async def create_pr_for_adr(
-        self,
-        repo_name: str,
-        adr: ADR,
-        base_branch: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Create a GitHub PR for an ADR."""
-        if not self.client:
-            return {
-                "success": False,
-                "error": "GitHub token not configured"
-            }
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.repo_path = self.settings.workdir
+
+    def is_git_repo(self) -> bool:
+        """Check if current directory is a git repository."""
+        try:
+            git.Repo(self.repo_path)
+            return True
+        except git.exc.InvalidGitRepositoryError:
+            return False
+
+    def create_adr_branch(self, slug: str) -> Optional[str]:
+        """Create a new branch for ADR."""
+        if not self.is_git_repo():
+            logger.warning("Not a git repository")
+            return None
         
         try:
-            repo = self.client.get_repo(repo_name)
-            base_branch = base_branch or settings.github_default_branch
-            
-            # Create branch name
-            branch_name = f"adr-{adr.number}-{adr.title.lower().replace(' ', '-')[:30]}"
-            
-            # Get base branch reference
-            base_ref = repo.get_git_ref(f"heads/{base_branch}")
-            base_sha = base_ref.object.sha
+            repo = git.Repo(self.repo_path)
+            branch_name = f"adr/{slug}"
             
             # Create new branch
-            try:
-                repo.create_git_ref(f"refs/heads/{branch_name}", base_sha)
-            except GithubException as e:
-                if e.status == 422:  # Branch already exists
-                    return {
-                        "success": False,
-                        "error": f"Branch {branch_name} already exists"
-                    }
-                raise
+            new_branch = repo.create_head(branch_name)
+            new_branch.checkout()
             
-            # Create/update file
-            file_path = f"{settings.adr_directory}/ADR-{adr.number:04d}-{adr.title.replace(' ', '-')}.md"
-            content = ADRService.format_as_madr(adr)
-            
-            try:
-                # Try to get existing file
-                existing_file = repo.get_contents(file_path, ref=branch_name)
-                repo.update_file(
-                    path=file_path,
-                    message=f"Update ADR-{adr.number}: {adr.title}",
-                    content=content,
-                    sha=existing_file.sha,
-                    branch=branch_name
-                )
-            except GithubException:
-                # File doesn't exist, create it
-                repo.create_file(
-                    path=file_path,
-                    message=f"Add ADR-{adr.number}: {adr.title}",
-                    content=content,
-                    branch=branch_name
-                )
-            
-            # Create pull request
-            pr = repo.create_pull(
-                title=f"ADR-{adr.number}: {adr.title}",
-                body=f"""## Architecture Decision Record
-
-**Status:** {adr.status.upper()}
-
-**Context:**
-{adr.context}
-
-**Decision:**
-{adr.decision}
-
-**Consequences:**
-{adr.consequences}
-
-This PR adds/updates ADR-{adr.number}.
-""",
-                head=branch_name,
-                base=base_branch
-            )
-            
-            return {
-                "success": True,
-                "pr_number": pr.number,
-                "pr_url": pr.html_url,
-                "branch": branch_name
-            }
-            
-        except GithubException as e:
-            return {
-                "success": False,
-                "error": f"GitHub API error: {e.data.get('message', str(e))}"
-            }
+            return branch_name
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    async def sync_adrs_from_repo(
-        self,
-        repo_name: str,
-        branch: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Sync ADRs from a GitHub repository."""
-        if not self.client:
-            return {
-                "success": False,
-                "error": "GitHub token not configured"
-            }
+            logger.error(f"Failed to create branch: {e}")
+            return None
+
+    def commit_and_push(self, file_paths: list[str], message: str) -> bool:
+        """Commit and push files."""
+        if not self.is_git_repo():
+            logger.warning("Not a git repository")
+            return False
         
         try:
-            repo = self.client.get_repo(repo_name)
-            branch = branch or settings.github_default_branch
+            repo = git.Repo(self.repo_path)
             
-            # Get ADR directory contents
-            try:
-                contents = repo.get_contents(settings.adr_directory, ref=branch)
-            except GithubException:
-                return {
-                    "success": False,
-                    "error": f"ADR directory not found: {settings.adr_directory}"
-                }
+            # Add files
+            for file_path in file_paths:
+                repo.index.add([file_path])
             
-            synced_files = []
-            for content_file in contents:
-                if content_file.name.endswith('.md'):
-                    file_content = base64.b64decode(content_file.content).decode('utf-8')
-                    synced_files.append({
-                        "path": content_file.path,
-                        "sha": content_file.sha,
-                        "content": file_content
-                    })
+            # Commit
+            repo.index.commit(message)
             
-            return {
-                "success": True,
-                "synced_count": len(synced_files),
-                "files": synced_files
-            }
+            # Push (if remote configured and token available)
+            if self.settings.github_token:
+                origin = repo.remote(name="origin")
+                origin.push()
             
-        except GithubException as e:
-            return {
-                "success": False,
-                "error": f"GitHub API error: {e.data.get('message', str(e))}"
-            }
+            return True
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            logger.error(f"Failed to commit/push: {e}")
+            return False
+
+    def sync_adr_directories(self, direction: str = "both") -> tuple[list[str], list[str]]:
+        """Sync ADR directories with remote."""
+        synced_files = []
+        conflicts = []
+        
+        if not self.is_git_repo():
+            logger.warning("Not a git repository")
+            return synced_files, conflicts
+        
+        try:
+            repo = git.Repo(self.repo_path)
+            
+            if direction in ["pull", "both"]:
+                # Pull changes
+                origin = repo.remote(name="origin")
+                origin.pull()
+                synced_files.append("Pulled latest changes")
+            
+            if direction in ["push", "both"]:
+                # Stage ADR changes
+                adr_files = list(Path(self.settings.adr_dir).glob("**/*.md"))
+                adr_draft_files = list(Path(self.settings.adr_draft_dir).glob("**/*.md"))
+                
+                all_adr_files = adr_files + adr_draft_files
+                for file_path in all_adr_files:
+                    relative_path = file_path.relative_to(self.repo_path)
+                    repo.index.add([str(relative_path)])
+                    synced_files.append(str(relative_path))
+                
+                # Commit if there are changes
+                if repo.index.diff("HEAD"):
+                    repo.index.commit("Sync ADR changes")
+                    
+                    if self.settings.github_token:
+                        origin = repo.remote(name="origin")
+                        origin.push()
+            
+            return synced_files, conflicts
+            
+        except Exception as e:
+            logger.error(f"Sync failed: {e}")
+            return synced_files, [str(e)]

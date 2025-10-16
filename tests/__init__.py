@@ -1,1 +1,1 @@
-"""Tests for ADR-Workbench."""
+"""Test suite for ADR-Master."""

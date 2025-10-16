@@ -1,240 +1,343 @@
 # ADR-Master
 
-Creation of ADR documents with AI assistance and agentic workflow at its heart
+**Offline-capable ADR Editor with MCP Integration and Agentic Workflow**
 
-## ADR-Workbench
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
-**ADR-Workbench** is an offline-capable FastAPI + HTMX + Tailwind web application for authoring, refining, linting, and syncing MADR-style Architecture Decision Records (ADRs).
+ADR-Master is a powerful, offline-capable Architecture Decision Records (ADR) editor that helps teams author, visualize, refine, lint, and promote ADRs using MADR templates. It features MCP integration for project/feature awareness and LLM-powered compilation for enhanced ADR quality.
 
-### Features
+## Features
 
-#### Core Features
-- 📝 **ADR Authoring**: Create and edit ADRs in MADR (Markdown Any Decision Records) format
-- ✅ **Linting & Validation**: Real-time quality checks and best practice validation
-- 🚀 **Offline-Capable**: Works completely offline with local SQLite database
-- 🎨 **Modern UI**: FastAPI + HTMX + Tailwind CSS for a responsive, interactive experience
+- 👥 **Multi-user, multi-project** support with access control
+- 🔐 **Authentication** with JWT tokens and API keys
+- 🎫 **Project invitations** via secure project secrets
+- 📝 **MADR-based ADR Editor** with live preview and syntax hints
+- 🤖 **LLM-powered compilation** for ADR improvement and refinement
+- 🔍 **Smart linting** with MADR structure validation
+- 📊 **Diff and promote** workflow for moving ADRs from draft to final
+- 🔌 **MCP integration** (client) for project and feature awareness
+- 🚀 **GitHub sync** with PR creation support
+- 🧩 **Plugin system** for extensibility
+- 🐳 **Docker & Devcontainer** ready
 
-#### Advanced Features
-- 🤖 **LLM Integration**: Generate and refine ADRs using OpenAI or Anthropic
-- 🔄 **Async Job Processing**: Background jobs for LLM compilation and GitHub operations
-- 🌐 **MCP Client**: Connect to existing Model Context Protocol endpoints for project/features data
-- 🔌 **Plugin System**: Extend functionality with custom plugins
-- 📤 **GitHub PR Promotion**: Create pull requests directly from ADRs
-- 🛠️ **MCP Tool Exports**: Expose ADR operations as MCP tools
+## Quick Start
 
-### Quick Start
-
-#### Using Docker
+### Using Docker
 
 ```bash
-# Build and run with Docker Compose
-docker-compose up -d
+# Build and run
+docker build -t adr-master .
+docker run -p 8000:8000 -v $(pwd)/ADR:/app/ADR adr-master
 
-# Access the application
-open http://localhost:8000
+# Visit http://localhost:8000
 ```
 
-#### Using Python
+### Using Devcontainer
+
+1. Open in VS Code with Remote-Containers extension
+2. Reopen in container
+3. Application starts automatically
+
+### Local Development
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
-npm install
+pip install -e ".[dev]"
 
-# Build CSS
-npm run build:css
-
-# Run the application
-python -m app.main
-
-# Or use uvicorn directly
+# Run application
 uvicorn app.main:app --reload
+
+# Or use Make
+make dev
+make run
 ```
 
-#### Using DevContainer
+## Configuration
 
-1. Open the project in VS Code
-2. Click "Reopen in Container" when prompted
-3. The application will start automatically on port 8000
+Create a `.env` file (see `.env.example`):
 
-### Project Structure
+```env
+# Server
+BASE_URL=https://adr.example.com
+
+# Authentication
+SECRET_KEY=your-secret-key-here
+JWT_EXPIRATION_HOURS=24
+
+# Database
+DATABASE_URL=sqlite:///./adr_master.db
+
+# MCP Integration (optional)
+MCP_BASE_URL=https://mcp-server.example.com/api
+MCP_TOKEN=your-token
+
+# LLM Endpoint (optional)
+LLM_ENDPOINT=https://llm-api.example.com/generate
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    ADR-Master Web UI                     │
+│              (HTMX + Alpine.js + Tailwind)               │
+├─────────────────────────────────────────────────────────┤
+│                   FastAPI REST API                       │
+│  /api/adr | /api/mcp | /api/projects | /api/integrations│
+├─────────────────────────────────────────────────────────┤
+│              Core Services Layer                         │
+│  ADR Service | MCP Client | LLM Service | GitHub Service│
+├─────────────────────────────────────────────────────────┤
+│         SQLite Database (Jobs, Metadata, Logs)          │
+└─────────────────────────────────────────────────────────┘
+         ↓                    ↓                    ↓
+   /ADR & /ADR/Draft    MCP Server (external)   LLM (local)
+```
+
+## ADR Workflow
+
+1. **Create Draft** → Generate MADR-formatted draft in `/ADR/Draft`
+2. **Edit & Refine** → Use built-in editor with live preview
+3. **Compile** → Send to LLM for improvement (async job)
+4. **Lint** → Validate structure and content
+5. **Promote** → Move to `/ADR` with status change to "Accepted"
+6. **Sync** → Push to GitHub with optional PR creation
+
+## API Endpoints
+
+### ADR Operations
+- `POST /api/adr/draft` - Create new draft
+- `POST /api/adr/compile` - Start async compilation
+- `GET /api/adr/jobs/{job_id}` - Check job status
+- `POST /api/adr/lint` - Validate ADR
+- `POST /api/adr/promote` - Promote to final
+- `POST /api/adr/sync` - Sync with GitHub
+
+### MCP Integration
+- `GET /api/mcp/config` - MCP connection status
+- `GET /api/mcp/projects` - List projects
+- `GET /api/mcp/features` - List features
+- `POST /api/mcp/proposals` - Submit proposal
+
+### Project & Integrations
+- `POST /api/projects/index` - Index local project
+- `GET /api/integrations/` - List integrations
+- `POST /api/integrations/` - Register integration
+
+Full API docs: http://localhost:8000/docs
+
+## MCP Tools Export
+
+ADR-Master includes a thin MCP tools adapter (`mcp_tools/`) that exposes core functions as MCP-compatible tools for other MCP servers to integrate:
+
+- `adr.generate` - Generate new ADR draft
+- `adr.compile` - Compile with LLM
+- `adr.lint` - Validate ADR
+- `adr.promote` - Promote to final
+- `adr.sync` - Sync with remote
+
+**Note:** ADR-Master is NOT an MCP server itself. See `mcp_tools/README.md` for integration details.
+
+## Plugin Development
+
+Create custom plugins to enhance ADR workflows:
+
+```python
+from app.schemas.integration import IntegrationCreate
+import httpx
+
+# Register plugin
+async with httpx.AsyncClient() as client:
+    await client.post(
+        "http://localhost:8000/api/integrations/",
+        json={
+            "name": "My Plugin",
+            "description": "Custom ADR enhancement",
+            "hooks": ["on_draft_create", "on_compile_post"],
+            "config": {}
+        }
+    )
+```
+
+Available hooks:
+- `on_draft_create` - After draft creation
+- `on_compile_post` - After LLM compilation
+- `on_promote_pre` - Before promotion
+- `on_sync_post` - After sync
+
+See `examples/plugin_example.py` for complete example.
+
+## Development
+
+### Setup
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Or using make
+make dev
+```
+
+### Testing
+
+```bash
+# Run tests with coverage
+make test
+
+# Run without coverage requirement
+pytest -v
+
+# Using nox
+nox
+```
+
+### Linting & Formatting
+
+```bash
+make lint        # Run ruff
+make format      # Format with black and ruff
+make type-check  # Run mypy
+make security    # Run bandit
+```
+
+### CI Gates
+
+All commits must pass:
+- ✅ ruff (linting)
+- ✅ black (formatting)
+- ✅ mypy (type checking)
+- ✅ pytest (≥90% coverage)
+- ✅ bandit (security)
+
+## Offline Operation
+
+ADR-Master works completely offline:
+
+1. **No external dependencies** except configured endpoints
+2. **Local LLM** support (Ollama, llama.cpp, etc.)
+3. **File-based storage** (SQLite + markdown files)
+4. **Optional integrations** (MCP, GitHub) - work without them
+5. **Air-gap friendly** - no telemetry or external calls
+
+### Running Offline
+
+```bash
+# Without MCP integration
+unset MCP_BASE_URL
+
+# With local LLM (Ollama example)
+# Install: https://ollama.ai
+ollama run llama2
+
+# ADR-Master will use http://localhost:11434/api/generate
+```
+
+## Directory Structure
 
 ```
 ADR-Master/
-├── app/
-│   ├── models/          # Database models (ADR, Job)
-│   ├── routers/         # API routes (adrs, jobs, mcp, plugins, ui)
-│   ├── services/        # Business logic (ADR, LLM, GitHub, Lint, Job)
-│   ├── mcp/            # MCP client and tool exports
-│   ├── plugins/        # Plugin system
-│   ├── templates/      # HTML templates
-│   ├── static/         # CSS, JS, and static assets
-│   ├── config.py       # Application configuration
-│   ├── database.py     # Database setup
-│   └── main.py         # FastAPI application
-├── docs/adr/           # ADR markdown files
-├── plugins/            # Custom plugins
-├── tests/              # Test files
-├── Dockerfile          # Docker configuration
-├── docker-compose.yml  # Docker Compose setup
-└── requirements.txt    # Python dependencies
+├── app/                    # Main application
+│   ├── api/               # API endpoints
+│   ├── core/              # Core business logic
+│   ├── db/                # Database setup
+│   ├── models/            # SQLAlchemy models
+│   ├── schemas/           # Pydantic schemas
+│   ├── services/          # Business services
+│   ├── templates/         # HTML templates
+│   └── static/            # Static assets
+├── mcp_tools/             # MCP tools adapter
+├── tests/                 # Test suite
+│   ├── unit/             # Unit tests
+│   └── integration/      # Integration tests
+├── examples/              # Example plugins and templates
+├── docs/                  # Additional documentation
+├── ADR/                   # Final ADRs
+│   └── Draft/            # Draft ADRs
+├── _logs/                # Application logs
+└── pyproject.toml        # Project configuration
 ```
 
-### Configuration
+## Examples
 
-Create a `.env` file in the root directory:
-
-```env
-# Application
-DEBUG=false
-APP_NAME=ADR-Workbench
-
-# Database
-DATABASE_URL=sqlite+aiosqlite:///./adr_workbench.db
-
-# MCP Client
-MCP_ENDPOINT=http://localhost:8080/mcp
-
-# LLM
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-DEFAULT_LLM_PROVIDER=openai
-DEFAULT_LLM_MODEL=gpt-4
-
-# GitHub
-GITHUB_TOKEN=ghp_...
-GITHUB_DEFAULT_BRANCH=main
-
-# ADR Settings
-ADR_DIRECTORY=./docs/adr
-ADR_TEMPLATE=madr
-```
-
-### API Documentation
-
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### Key Endpoints
-
-#### UI Routes
-- `GET /` - Home page
-- `GET /adrs` - List ADRs
-- `GET /adrs/new` - Create new ADR
-- `GET /adrs/{id}` - View ADR details
-- `GET /adrs/{id}/edit` - Edit ADR
-- `GET /adrs/{id}/lint` - Lint results
-
-#### API Routes
-- `POST /api/adrs` - Create ADR
-- `GET /api/adrs` - List ADRs
-- `GET /api/adrs/{id}` - Get ADR
-- `PUT /api/adrs/{id}` - Update ADR
-- `DELETE /api/adrs/{id}` - Delete ADR
-- `POST /api/adrs/compile` - Compile ADR with LLM
-- `POST /api/adrs/{id}/github-pr` - Create GitHub PR
-
-#### Job Routes
-- `POST /api/jobs` - Create async job
-- `GET /api/jobs` - List jobs
-- `GET /api/jobs/{id}` - Get job status
-
-#### MCP Routes
-- `GET /api/mcp/health` - Check MCP endpoint health
-- `POST /api/mcp/query` - Query MCP data
-- `GET /api/mcp/exports` - List exported tools
-- `POST /api/mcp/exports/{tool}` - Execute exported tool
-
-#### Plugin Routes
-- `GET /api/plugins` - List plugins
-- `POST /api/plugins/load` - Load plugins
-- `POST /api/plugins/{name}/enable` - Enable plugin
-- `POST /api/plugins/{name}/disable` - Disable plugin
-
-### Plugin Development
-
-Create a plugin by adding a Python file to the `plugins/` directory:
-
-```python
-from app.plugins.base import Plugin, PluginMetadata
-
-class MyPlugin(Plugin):
-    def get_metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="My Plugin",
-            version="1.0.0",
-            description="Custom plugin functionality"
-        )
-    
-    async def on_adr_create(self, adr_data: dict) -> dict:
-        # Hook into ADR creation
-        print(f"Creating ADR: {adr_data['title']}")
-        return adr_data
-```
-
-### MCP Integration
-
-ADR-Workbench can:
-- **Connect as a client** to existing MCP endpoints for project/features data
-- **Export tools** that other MCP clients can use
-
-Example MCP client usage:
-
-```python
-from app.mcp.client import get_mcp_client
-
-client = get_mcp_client()
-result = await client.query_project_data("project-123")
-```
-
-### Development
-
-#### Run Tests
+### Create Draft via API
 
 ```bash
-pytest tests/ -v --cov=app
+curl -X POST http://localhost:8000/api/adr/draft \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Use GraphQL for API",
+    "problem": "Need flexible API for multiple clients",
+    "context": "Mobile and web apps with different data needs"
+  }'
 ```
 
-#### Lint Code
+### Compile with LLM
 
 ```bash
-ruff check app/
-black app/
-mypy app/
+curl -X POST http://localhost:8000/api/adr/compile \
+  -H "Content-Type: application/json" \
+  -d '{
+    "draft_path": "/app/ADR/Draft/003-use-graphql.md",
+    "human_notes": "Focus on performance implications"
+  }'
 ```
 
-#### Build CSS
+### Check Job Status
 
 ```bash
-npm run build:css
-# or for development with watch
-npm run watch:css
+curl http://localhost:8000/api/adr/jobs/{job_id}
 ```
 
-### Technology Stack
+## Troubleshooting
 
-- **Backend**: FastAPI, SQLAlchemy, Pydantic
-- **Frontend**: HTMX, Tailwind CSS
-- **Database**: SQLite (async with aiosqlite)
-- **LLM**: OpenAI, Anthropic
-- **GitHub**: PyGithub
-- **MCP**: Model Context Protocol support
-- **Container**: Docker, Docker Compose, DevContainer
+### LLM Not Working
+- Check `LLM_ENDPOINT` is set correctly
+- Verify LLM service is running (e.g., `ollama list`)
+- Test endpoint: `curl -X POST $LLM_ENDPOINT -d '{"model":"llama2","prompt":"test"}'`
 
-### Contributing
+### MCP Connection Failed
+- Verify `MCP_BASE_URL` is accessible
+- Check `MCP_TOKEN` if authentication required
+- Test: `curl -H "Authorization: Bearer $MCP_TOKEN" $MCP_BASE_URL/health`
 
-Contributions are welcome! Please:
+### Database Locked
+- Only one writer at a time (SQLite limitation)
+- Restart application if process died mid-transaction
+
+## Contributing
+
+Contributions welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests
+4. Run tests and linting
 5. Submit a pull request
 
-### License
+## License
 
-MIT License - See LICENSE file for details
+MIT License - see LICENSE file for details.
 
-### Support
+## Roadmap (V2)
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/keithjasper83/ADR-Master).
+- [ ] Tree-sitter integration for code-aware previews
+- [ ] LibCST/ts-morph for code diffs tied to ADRs
+- [ ] Web Workers for heavy operations
+- [ ] Real-time collaboration (optional)
+- [ ] ADR templates library
+- [ ] Export to PDF/HTML
+- [ ] ADR dependency graph visualization
+- [ ] Advanced search and filtering
+- [ ] Automated ADR suggestions from code changes
+
+## Support
+
+- Documentation: See `docs/` directory
+- Issues: GitHub Issues
+- Discussions: GitHub Discussions
+
+---
+
+Built with ❤️ for teams who value architecture documentation

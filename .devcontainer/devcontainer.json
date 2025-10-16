@@ -1,17 +1,16 @@
 {
-  "name": "ADR-Workbench",
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "adr-workbench",
-  "workspaceFolder": "/app",
-  
+  "name": "ADR-Master Dev Container",
+  "dockerFile": "../Dockerfile",
+  "context": "..",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
         "charliermarsh.ruff",
-        "bradlc.vscode-tailwindcss",
-        "esbenp.prettier-vscode"
+        "tamasfe.even-better-toml",
+        "redhat.vscode-yaml"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
@@ -20,20 +19,16 @@
         "python.formatting.provider": "black",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-          "source.organizeImports": true
+          "source.organizeImports": "explicit"
         }
       }
     }
   },
-  
   "forwardPorts": [8000],
-  "portsAttributes": {
-    "8000": {
-      "label": "ADR-Workbench",
-      "onAutoForward": "notify"
-    }
-  },
-  
-  "postCreateCommand": "pip install -r requirements.txt && npm install",
-  "postStartCommand": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+  "postCreateCommand": "pip install -e '.[dev]'",
+  "remoteUser": "root",
+  "mounts": [
+    "source=${localWorkspaceFolder}/ADR,target=/app/ADR,type=bind",
+    "source=${localWorkspaceFolder}/_logs,target=/app/_logs,type=bind"
+  ]
 }
