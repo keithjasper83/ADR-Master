@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     # LLM (optional - online service)
     llm_endpoint: str = "http://localhost:11434/api/generate"
+    llm_model: str = "llama2"  # Default model name for LLM endpoint
 
     # Security
     cors_enabled: bool = True
